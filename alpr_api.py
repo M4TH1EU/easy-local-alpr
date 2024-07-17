@@ -137,6 +137,37 @@ def create_rest_server_flask():
             result = process_image(image)
             result = convert_to_cpai_compatible(result)
 
+            if len(result['predictions']) == 0:
+                print("No plate found in the image, trying to split the image")
+
+                width, height = image.size
+                cell_width = width // 3
+                cell_height = height // 3
+
+                # Define which cells to process (2, 4, 5, 6, 8, 9)
+                cells_to_process = [2, 4, 5, 6, 8, 9]
+
+                # Loop through each cell
+                for cell_index in range(1, 10):
+                    # Calculate row and column of the cell
+                    row = (cell_index - 1) // 3
+                    col = (cell_index - 1) % 3
+
+                    # Calculate bounding box of the cell
+                    left = col * cell_width
+                    upper = row * cell_height
+                    right = left + cell_width
+                    lower = upper + cell_height
+
+                    # Check if this cell should be processed
+                    if cell_index in cells_to_process:
+                        # Extract the cell as a new image
+                        cell_image = image.crop((left, upper, right, lower))
+
+
+
+                        cell_image.show()
+
             return jsonify(result)
         else:
             return jsonify({'error': 'Endpoint not implemented'}), 404

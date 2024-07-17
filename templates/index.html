@@ -5,44 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Upload</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- Include Google Sans font -->
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
             background-color: #f0f2f5;
-            background-image: radial-gradient(#ffffff 1px, rgba(0, 0, 0, 0) 1px);
+            background-image: radial-gradient(#7c7c7c 1px, rgba(0, 0, 0, 0) 1px);
             background-size: 20px 20px;
-            font-family: 'Google Sans', sans-serif; /* Apply Roboto font to the entire page */
+            font-family: 'Google Sans', sans-serif; /* Apply Google Sans font to the entire page */
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
+<body class="bg-neutral-100 dark:bg-neutral-900 dark:text-white flex items-center justify-center h-screen">
     <!-- Logo -->
     <div class="absolute top-4 left-4">
-        <img src="{{ url_for('static', filename='logo.webp') }}" alt="Logo" class="h-12">
+        <img id="logo" src="{{ url_for('static', filename='logo_black.webp') }}" alt="Logo" class="h-12 dark:hidden">
+        <img id="logoDark" src="{{ url_for('static', filename='logo_white.webp') }}" alt="Logo" class="h-12 hidden dark:block">
     </div>
 
-    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative">
-        <h1 class="text-2xl font-bold mb-4 text-center">Upload Image for ALPR</h1>
+    <div class="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow-lg w-full max-w-md relative">
+        <h1 class="text-2xl font-bold mb-4 text-center dark:text-gray-200">Upload Image for ALPR</h1>
         <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
             <div>
-                <label for="upload" class="block text-sm font-medium text-gray-700">Choose an image:</label>
+                <label for="upload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Choose an image:</label>
                 <div class="mt-1 flex items-center">
                     <input type="file" id="upload" name="upload" accept="image/*" class="hidden" onchange="updateFileName()">
-                    <label for="upload" class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <label for="upload" class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-gray-400 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-600">
                         Select file
                     </label>
-                    <span id="fileName" class="ml-2 text-sm text-gray-600"></span>
+                    <span id="fileName" class="ml-2 text-sm text-gray-600 dark:text-gray-300"></span>
                 </div>
             </div>
             <div id="imagePreview" class="mt-4 hidden">
                 <img id="previewImage" src="#" alt="Preview" class="max-w-full h-auto rounded-lg">
             </div>
-            <button type="submit" class="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700">Upload</button>
+            <button type="submit" class="w-full py-2 px-4 bg-black text-white font-semibold rounded-md shadow-sm hover:bg-neutral-900 dark:bg-neutral-900 dark:hover:bg-neutral-950">Upload</button>
         </form>
         <div class="mt-6">
-            <h2 class="text-xl font-semibold mb-2">Response</h2>
-            <pre id="responseBox" class="bg-gray-100 p-4 border rounded-lg text-sm text-gray-800"></pre>
+            <h2 class="text-xl font-semibold mb-2 dark:text-gray-200">Response</h2>
+            <pre id="responseBox" class="bg-neutral-100 dark:bg-neutral-900 p-4 border rounded-lg text-sm text-gray-900 dark:text-gray-200"></pre>
         </div>
     </div>
 
@@ -67,6 +68,26 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        // Check for dark mode and switch logo accordingly
+        const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+        function toggleLogo() {
+            const logo = document.getElementById('logo');
+            const logoDark = document.getElementById('logoDark');
+            if (prefersDarkScheme.matches) {
+                logo.style.display = 'none';
+                logoDark.style.display = 'block';
+            } else {
+                logo.style.display = 'block';
+                logoDark.style.display = 'none';
+            }
+        }
+
+        // Initial call to set logo based on dark mode preference
+        toggleLogo();
+
+        // Listen for changes in dark mode preference
+        prefersDarkScheme.addEventListener('change', toggleLogo);
 
         $(document).ready(function () {
             $('#uploadForm').on('submit', function (e) {
