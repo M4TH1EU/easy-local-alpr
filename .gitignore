@@ -1,0 +1,7 @@
+assets/
+libs/
+venv/
+build/
+dist/
+tmp/
+*.spec

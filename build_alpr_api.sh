@@ -1,0 +1,1 @@
+pyinstaller --noconfirm --onefile --console --add-data libs:. --add-data assets:assets --name alpr_api "alpr_api.py"
