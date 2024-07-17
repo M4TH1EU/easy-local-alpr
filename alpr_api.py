@@ -177,7 +177,7 @@ def convert_to_cpai_compatible(result):
             y_max = max(y_coords)
 
             response['predictions'].append({
-                'confidence': plate['confidence'] / 100,
+                'confidence': plate['confidences'][0] / 100,
                 'label': "Plate: " + plate['text'],
                 'plate': plate['text'],
                 'x_min': x_min,
