@@ -136,44 +136,7 @@ def create_rest_server_flask():
         if not result['predictions']:
             print("No plate found in the image, attempting to split the image")
 
-            predictions_found = []
-
-            width, height = image.size
-            cell_width = width // 3
-            cell_height = height // 3
-            cells_to_process = [2, 4, 5, 6, 8, 9]
-
-            for cell_index in range(1, 10):
-                row = (cell_index - 1) // 3
-                col = (cell_index - 1) % 3
-                left = col * cell_width
-                upper = row * cell_height
-                right = left + cell_width
-                lower = upper + cell_height
-
-                if cell_index in cells_to_process:
-                    cell_image = image.crop((left, upper, right, lower))
-                    result_cell = json.loads(process_image(cell_image))
-
-                    if 'plates' in result_cell:
-                        for plate in result_cell['plates']:
-                            warpedBox = plate['warpedBox']
-                            x_coords = warpedBox[0::2]
-                            y_coords = warpedBox[1::2]
-                            x_min = min(x_coords) + left
-                            x_max = max(x_coords) + left
-                            y_min = min(y_coords) + upper
-                            y_max = max(y_coords) + upper
-
-                            predictions_found.append({
-                                'confidence': plate['confidences'][0] / 100,
-                                'label': "Plate: " + plate['text'],
-                                'plate': plate['text'],
-                                'x_min': x_min,
-                                'x_max': x_max,
-                                'y_min': y_min,
-                                'y_max': y_max
-                            })
+            predictions_found = find_best_plate_with_split(image)
 
             if predictions_found:
                 result['predictions'].append(max(predictions_found, key=lambda x: x['confidence']))
@@ -211,7 +174,6 @@ def convert_to_cpai_compatible(result):
 
     if 'plates' in result:
         plates = result['plates']
-
         for plate in plates:
             warpedBox = plate['warpedBox']
             x_coords = warpedBox[0::2]
@@ -232,6 +194,51 @@ def convert_to_cpai_compatible(result):
             })
 
     return response
+
+
+def find_best_plate_with_split(image, split_size=4, wanted_cells=None):
+    if wanted_cells is None:
+        wanted_cells = [5, 6, 7, 9, 10, 11, 14, 15] # TODO: use params not specifc to my use case
+
+    predictions_found = []
+
+    width, height = image.size
+    cell_width = width // split_size
+    cell_height = height // split_size
+
+    for cell_index in range(1, split_size * split_size + 1):
+        row = (cell_index - 1) // split_size
+        col = (cell_index - 1) % split_size
+        left = col * cell_width
+        upper = row * cell_height
+        right = left + cell_width
+        lower = upper + cell_height
+
+        if cell_index in wanted_cells:
+            cell_image = image.crop((left, upper, right, lower))
+            result_cell = json.loads(process_image(cell_image))
+
+            if 'plates' in result_cell:
+                for plate in result_cell['plates']:
+                    warpedBox = plate['warpedBox']
+                    x_coords = warpedBox[0::2]
+                    y_coords = warpedBox[1::2]
+                    x_min = min(x_coords) + left
+                    x_max = max(x_coords) + left
+                    y_min = min(y_coords) + upper
+                    y_max = max(y_coords) + upper
+
+                    predictions_found.append({
+                        'confidence': plate['confidences'][0] / 100,
+                        'label': "Plate: " + plate['text'],
+                        'plate': plate['text'],
+                        'x_min': x_min,
+                        'x_max': x_max,
+                        'y_min': y_min,
+                        'y_max': y_max
+                    })
+
+    return predictions_found
 
 
 if __name__ == '__main__':
