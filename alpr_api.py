@@ -10,6 +10,7 @@ from PIL import Image
 from flask import Flask, request, jsonify, render_template
 
 counter = 0
+bundle_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
 
 """
 Hi there!
@@ -55,8 +56,6 @@ IMAGE_TYPES_MAPPING = {
 
 
 def load_engine():
-    bundle_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
-
     JSON_CONFIG["assets_folder"] = os.path.join(bundle_dir, "assets")
     JSON_CONFIG.update({
         "charset": "latin",
@@ -116,7 +115,7 @@ def process_image(image: Image) -> str:
 
 
 def create_rest_server_flask():
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder=os.path.join(bundle_dir, 'templates'))
 
     @app.route('/v1/image/alpr', methods=['POST'])
     def alpr():
