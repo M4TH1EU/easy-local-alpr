@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import threading
+import time
 from time import sleep
 
 import ultimateAlprSdk
@@ -126,6 +127,7 @@ def create_rest_server_flask():
     def alpr(domain, module):
         # Only care about the ALPR endpoint
         if domain == 'image' and module == 'alpr':
+            interference = time.time()
             if 'upload' not in request.files:
                 return jsonify({'error': 'No image found'})
 
@@ -134,11 +136,12 @@ def create_rest_server_flask():
                 return jsonify({'error': 'No selected file'})
 
             image = Image.open(image)
-            result = process_image(image)
-            result = convert_to_cpai_compatible(result)
+            result = convert_to_cpai_compatible(process_image(image))
 
             if len(result['predictions']) == 0:
                 print("No plate found in the image, trying to split the image")
+
+                predictions_found = []
 
                 width, height = image.size
                 cell_width = width // 3
@@ -164,10 +167,34 @@ def create_rest_server_flask():
                         # Extract the cell as a new image
                         cell_image = image.crop((left, upper, right, lower))
 
+                        result_cell = json.loads(process_image(cell_image))
 
+                        if 'plates' in result_cell:
+                            for plate in result_cell['plates']:
+                                warpedBox = plate['warpedBox']
+                                x_coords = warpedBox[0::2]
+                                y_coords = warpedBox[1::2]
+                                x_min = min(x_coords) + left
+                                x_max = max(x_coords) + left
+                                y_min = min(y_coords) + upper
+                                y_max = max(y_coords) + upper
 
-                        cell_image.show()
+                                predictions_found.append({
+                                    'confidence': plate['confidences'][0] / 100,
+                                    'label': "Plate: " + plate['text'],
+                                    'plate': plate['text'],
+                                    'x_min': x_min,
+                                    'x_max': x_max,
+                                    'y_min': y_min,
+                                    'y_max': y_max
+                                })
 
+                if len(predictions_found) > 0:
+                    # add the prediction with the highest confidence
+                    result['predictions'].append(max(predictions_found, key=lambda x: x['confidence']))
+
+            result['processMs'] = round((time.time() - interference) * 1000, 2)
+            result['inferenceMs'] = result['processMs'] # same as processMs
             return jsonify(result)
         else:
             return jsonify({'error': 'Endpoint not implemented'}), 404
