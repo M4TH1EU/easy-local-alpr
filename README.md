@@ -16,7 +16,7 @@ image file in the 'upload' field. The image is processed using the ultimateALPR 
 information is returned in JSON format. The reponse follows the CodeProject AI ALPR API format. So it can be used
 as a drop-in replacement for the [CodeProject AI ALPR API](https://www.codeproject.com/AI/docs/api/api_reference.html#license-plate-reader).
 
-> POST: http://localhost:32168/v1/vision/alpr
+> POST: http://localhost:5000/v1/vision/alpr
 
 **Parameters**
 - upload: (File) The image file to process. (see [Pillow.Image.open()](https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.open) for supported formats)
