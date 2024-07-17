@@ -6,7 +6,7 @@ from time import sleep
 
 import ultimateAlprSdk
 from PIL import Image
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
 counter = 0
 
@@ -140,6 +140,10 @@ def create_rest_server_flask():
             return jsonify(result)
         else:
             return jsonify({'error': 'Endpoint not implemented'}), 404
+
+    @app.route('/')
+    def index():
+        return render_template('index.html')
 
     return app
 
