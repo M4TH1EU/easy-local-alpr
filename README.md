@@ -76,3 +76,11 @@ When building or developing the script, make sure to set the ``LD_LIBRARY_PATH``
 ```bash
 export LD_LIBRARY_PATH=libs:$LD_LIBRARY_PATH
 ```
+
+### Error handling
+#### GLIBC_ABI_DT_RELR not found
+If you encounter an error like this:
+```bash
+/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_ABI_DT_RELR' not found
+```
+Then make sure your GLIBC version is >= 2.36

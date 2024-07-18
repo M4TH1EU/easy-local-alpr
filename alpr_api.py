@@ -38,7 +38,7 @@ JSON_CONFIG = {
 
     "car_noplate_detect_min_score": 0.8,
 
-    "pyramidal_search_enabled": True,
+    "pyramidal_search_enabled": False,
     "pyramidal_search_sensitivity": 0.38,  # default 0.28
     "pyramidal_search_minscore": 0.8,
     "pyramidal_search_min_image_size_inpixels": 800,
@@ -61,8 +61,8 @@ def load_engine():
         "charset": "latin",
         "car_noplate_detect_enabled": False,
         "ienv_enabled": False,
-        "openvino_enabled": False,
-        "openvino_device": "GPU",
+        "openvino_enabled": True,
+        "openvino_device": "CPU",
         "npu_enabled": False,
         "klass_lpci_enabled": False,
         "klass_vcr_enabled": False,
