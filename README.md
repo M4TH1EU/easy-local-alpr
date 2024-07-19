@@ -42,24 +42,12 @@ the ``dist`` folder.
 
 ## Setup development environment
 
-### Install ultimateALPR SDK
-#### Manually build the wheel
-If you want to build the wheel yourself, you can use the ``build_and_setup_ultimatealvr.sh`` script. It will create a new
-directory ``tmp`` and build the wheel in there. It also includes the assets and libs folders needed when developing.
+### Use automatic setup script
+You can use the ``build_and_setup_ultimatealvr.sh`` script to automatically install the necessary packages and build the ultimateALPR SDK wheel, copy the assets and the libs.
 > [!IMPORTANT]
 > Make sure to install the package python3-dev (APT) python3-devel (RPM) before running the build and setup script.
-#### Use already built wheel (quick and easy but not recommended for dev)
-I have already built the ultimateALPR SDK for x86_64 and ARM64 and included the python3.10 wheel in the wheel folder.
-You can install the wheel using : ``pip install wheel/*.whl``
 
-### Copy necessary files/folders
-Copy the ``assets`` and ``libs`` folders to the same directory as the script.
-
-- If you built the wheel in the previous step, you can copy the ``assets`` and ``libs`` folders from the ``tmp`` directory.  
-
-- *If you used the already built wheel, you can find the 'assets' and 'libs' folders on the [GitHub repository](https://github.com/DoubangoTelecom/ultimateALPR-SDK/tree/master/assets), although you will manually copy every ``*.so*`` file from ``/binaries/linux/<arch>/`` into a newly created ``libs`` folder.*
-
-The structure should look like this:
+The end structure should look like this:
 ```bash
 .
 ├── alpr_api.py
@@ -74,7 +62,7 @@ The structure should look like this:
 ```
 
 ### Important notes
-When building or developing the script, make sure to set the ``LD_LIBRARY_PATH`` environment variable to the libs folder
+When running, building or developing the script, make sure to set the ``LD_LIBRARY_PATH`` environment variable to the libs folder
 *(limitation of the ultimateALPR SDK)*.
 ```bash
 export LD_LIBRARY_PATH=libs:$LD_LIBRARY_PATH
