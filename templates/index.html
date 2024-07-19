@@ -12,18 +12,18 @@
             background-color: #f0f2f5;
             background-image: radial-gradient(#7c7c7c 1px, rgba(0, 0, 0, 0) 1px);
             background-size: 20px 20px;
-            font-family: 'Google Sans', sans-serif; /* Apply Google Sans font to the entire page */
+            font-family: 'Google Sans', sans-serif;
         }
     </style>
 </head>
-<body class="bg-neutral-100 dark:bg-neutral-900 dark:text-white flex items-center justify-center h-screen">
+<body class="bg-neutral-100 dark:bg-neutral-900 dark:text-white flex items-center justify-center min-h-screen p-4">
     <!-- Logo -->
-    <div class="absolute top-4 left-4">
+    <div class="absolute top-4 left-4 z-50">
         <img id="logo" src="{{ url_for('static', filename='logo_black.webp') }}" alt="Logo" class="h-12 dark:hidden">
         <img id="logoDark" src="{{ url_for('static', filename='logo_white.webp') }}" alt="Logo" class="h-12 hidden dark:block">
     </div>
 
-    <div class="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow-lg w-full max-w-md relative">
+    <div class="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow-lg w-full max-w-md mt-16">
         <h1 class="text-2xl font-bold mb-4 text-center dark:text-gray-200">Upload Image for ALPR</h1>
         <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
             <div>
@@ -43,7 +43,7 @@
         </form>
         <div class="mt-6">
             <h2 class="text-xl font-semibold mb-2 dark:text-gray-200">Response</h2>
-            <pre id="responseBox" class="bg-neutral-100 dark:bg-neutral-900 p-4 border rounded-lg text-sm text-gray-900 dark:text-gray-200"></pre>
+            <pre id="responseBox" class="bg-neutral-100 dark:bg-neutral-900 p-4 border rounded-lg text-sm text-gray-900 dark:text-gray-200 overflow-x-auto"></pre>
         </div>
     </div>
 
@@ -69,7 +69,6 @@
             }
         }
 
-        // Check for dark mode and switch logo accordingly
         const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
         function toggleLogo() {
             const logo = document.getElementById('logo');
@@ -83,10 +82,7 @@
             }
         }
 
-        // Initial call to set logo based on dark mode preference
         toggleLogo();
-
-        // Listen for changes in dark mode preference
         prefersDarkScheme.addEventListener('change', toggleLogo);
 
         $(document).ready(function () {
