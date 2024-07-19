@@ -139,8 +139,8 @@ else
     tar -xf libtensorflow-cpu-linux-x86_64-2.6.0.tar.gz -C "$BIN_DIR/tensorflow" >/dev/null 2>&1
 fi
 
-mv "$BIN_DIR/tensorflow/lib/"* "$BIN_DIR/libs/"
-cp "$BIN_DIR/libs/libtensorflow.so.2" "$BIN_DIR/libs/libtensorflow.so.1"
+mv "$BIN_DIR/tensorflow/lib/libtensorflow.so.1" "$BIN_DIR/libs/libtensorflow.so.1"
+mv "$BIN_DIR/tensorflow/lib/libtensorflow_framework.so.2.6.0" "$BIN_DIR/libs/libtensorflow_framework.so.2"
 
 # Build the wheel
 echo "Building the wheel..."
