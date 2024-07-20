@@ -1,5 +1,7 @@
 # Easy local ALPR (Automatic License Plate Recognition)
 
+![ALPR](preview-webui.webp)
+
 This script is a REST API server that uses [ultimateALPR-SDK](https://github.com/DoubangoTelecom/ultimateALPR-SDK)  to process images and return the license plate
 information. The server is created using Flask and the ultimateALPR SDK is used to process the images.
 
