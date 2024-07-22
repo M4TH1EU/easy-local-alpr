@@ -119,10 +119,28 @@ def create_rest_server_flask():
 
     @app.route('/v1/image/alpr', methods=['POST'])
     def alpr():
+        """
+        This function is called when a POST request is made to the /v1/image/alpr endpoint.
+        The function receives an image and processes it using the ultimateALPR SDK.
+
+        Parameters:
+            - upload: The image to be processed
+            - grid_size: The number of cells to split the image into (e.g. 4)
+            - wanted_cells: The cells to process in the grid separated by commas (e.g. 1,2,3,4) (max: grid_size²)
+        """
         interference = time.time()
 
         if 'upload' not in request.files:
             return jsonify({'error': 'No image found'})
+        if 'grid_size' in request.form and request.form['grid_size'].isdigit():
+            grid_size = int(request.form['grid_size'])
+        else:
+            grid_size = None
+        if 'wanted_cells' in request.form and request.form['wanted_cells']:
+            wanted_cells = request.form['wanted_cells'].split(',')
+            wanted_cells = [int(cell) for cell in wanted_cells]
+        else:
+            wanted_cells = None
 
         image = request.files['upload']
         if image.filename == '':
@@ -135,7 +153,7 @@ def create_rest_server_flask():
         if not result['predictions']:
             print("No plate found in the image, attempting to split the image")
 
-            predictions_found = find_best_plate_with_split(image)
+            predictions_found = find_best_plate_with_split(image, grid_size, wanted_cells)
 
             if predictions_found:
                 result['predictions'].append(max(predictions_found, key=lambda x: x['confidence']))
@@ -195,19 +213,21 @@ def convert_to_cpai_compatible(result):
     return response
 
 
-def find_best_plate_with_split(image, split_size=4, wanted_cells=None):
+def find_best_plate_with_split(image: Image, grid_size: int = None, wanted_cells: str = None):
+    if grid_size is None:
+        grid_size = 3
     if wanted_cells is None:
-        wanted_cells = [5, 6, 7, 9, 10, 11, 14, 15] # TODO: use params not specifc to my use case
+        wanted_cells = list(range(1, grid_size * grid_size + 1))
 
     predictions_found = []
 
     width, height = image.size
-    cell_width = width // split_size
-    cell_height = height // split_size
+    cell_width = width // grid_size
+    cell_height = height // grid_size
 
-    for cell_index in range(1, split_size * split_size + 1):
-        row = (cell_index - 1) // split_size
-        col = (cell_index - 1) % split_size
+    for cell_index in range(1, grid_size * grid_size + 1):
+        row = (cell_index - 1) // grid_size
+        col = (cell_index - 1) % grid_size
         left = col * cell_width
         upper = row * cell_height
         right = left + cell_width

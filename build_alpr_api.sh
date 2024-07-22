@@ -1,1 +1,2 @@
-pyinstaller --noconfirm --onefile --console --add-data libs:. --add-data assets:assets --add-data static:static --add-data templates:templates --name easy-local-alpr-1.1.0-openvinocpu_linux_x86_64 "alpr_api.py"
+pyinstaller --noconfirm --console --add-data libs:. --add-data assets:assets --add-data static:static --add-data templates:templates --name easy-local-alpr-1.1.0-openvinocpu_linux_x86_64 "alpr_api.py"
+# optional: --onefile
