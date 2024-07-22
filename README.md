@@ -22,8 +22,18 @@ as a drop-in replacement for the [CodeProject AI ALPR API](https://www.codeproje
 
 **Parameters**
 - upload: (File) The image file to process. (see [Pillow.Image.open()](https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.open) for supported formats)
+- grid_size: (Integer) The grid size to use when no match have been found on the whole image (default: 4)
+- wanted_cells: (String) The wanted cells to use when no match have been found on the whole image (default: all cells)
+    - format: ``1,2,3,4,...`` *(comma separated list of integers, max: grid_size^2)*
+    - *Example for a grid_size of 3:*
+      ```
+        1 | 2 | 3
+        4 | 5 | 6
+        7 | 8 | 9
+      ```
+      
 
-**Response**
+  **Response**
 ```json
 {
   "success": (Boolean) // True if successful.
