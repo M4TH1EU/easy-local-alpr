@@ -11,6 +11,7 @@ from flask import Flask, request, jsonify, render_template
 
 counter = 0
 bundle_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+boot_time = time.time()
 
 """
 Hi there!
@@ -76,7 +77,8 @@ def load_engine():
     if not result.isOK():
         raise RuntimeError("Init failed: %s" % result.phrase())
 
-    while counter < 3000:
+    # restart engine every 3000 requests or every 6 hours
+    while counter < 3000 or time.time() - boot_time < 6 * 60 * 60:
         sleep(1)
 
     unload_engine()
@@ -100,6 +102,7 @@ def process_image(image: Image) -> str:
     else:
         raise ValueError("Invalid mode: %s" % image.mode)
 
+    # TODO: add check for if engine still loaded
     result = ultimateAlprSdk.UltAlprSdkEngine_process(
         image_type,
         image.tobytes(),
