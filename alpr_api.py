@@ -22,8 +22,24 @@ information. The server is created using Flask and the ultimateALPR SDK is used 
 See the README.md file for more information on how to run this script.
 """
 
-# Defines the default JSON configuration. More information at https://www.doubango.org/SDKs/anpr/docs/Configuration_options.html
+# Defines the default JSON configuration. More information at
+# https://www.doubango.org/SDKs/anpr/docs/Configuration_options.html
 JSON_CONFIG = {
+    "assets_folder": os.path.join(bundle_dir, "assets"),  # don't change this
+
+    "charset": "latin",
+    "car_noplate_detect_enabled": False,
+    "ienv_enabled": False,
+    "openvino_enabled": True,
+    "openvino_device": "CPU",
+    "npu_enabled": False,
+    "klass_lpci_enabled": False,
+    "klass_vcr_enabled": False,
+    "klass_vmmr_enabled": False,
+    "klass_vbsr_enabled": False,
+    "license_token_file": "",
+    "license_token_data": "",
+
     "debug_level": "info",
     "debug_write_input_image_enabled": False,
     "debug_internal_data_path": ".",
@@ -55,34 +71,36 @@ IMAGE_TYPES_MAPPING = {
     'L': ultimateAlprSdk.ULTALPR_SDK_IMAGE_TYPE_Y
 }
 
+config = json.dumps(JSON_CONFIG)
 
-def load_engine():
-    JSON_CONFIG["assets_folder"] = os.path.join(bundle_dir, "assets")
-    JSON_CONFIG.update({
-        "charset": "latin",
-        "car_noplate_detect_enabled": False,
-        "ienv_enabled": False,
-        "openvino_enabled": True,
-        "openvino_device": "CPU",
-        "npu_enabled": False,
-        "klass_lpci_enabled": False,
-        "klass_vcr_enabled": False,
-        "klass_vmmr_enabled": False,
-        "klass_vbsr_enabled": False,
-        "license_token_file": "",
-        "license_token_data": ""
-    })
 
-    result = ultimateAlprSdk.UltAlprSdkEngine_init(json.dumps(JSON_CONFIG))
-    if not result.isOK():
-        raise RuntimeError("Init failed: %s" % result.phrase())
+def start_backend_loop():
+    global counter
+    load_engine()
 
-    # restart engine every 3000 requests or every 6 hours
-    while counter < 3000 or time.time() - boot_time < 6 * 60 * 60:
+    # loop for about an hour or 3000 requests then reload the engine (fix for trial license)
+    while counter < 3000 and time.time() - boot_time < 60 * 60:
+        # every 120 sec
+        if int(time.time()) % 120 == 0:
+            if not is_engine_loaded():
+                unload_engine()  # just in case
+                load_engine()
+
         sleep(1)
 
     unload_engine()
-    load_engine()
+    start_backend_loop()
+
+
+def is_engine_loaded():
+    # hacky way to check if the engine is loaded cause the SDK doesn't provide a method for it
+    return ultimateAlprSdk.UltAlprSdkEngine_requestRuntimeLicenseKey().isOK()
+
+
+def load_engine():
+    result = ultimateAlprSdk.UltAlprSdkEngine_init(config)
+    if not result.isOK():
+        raise RuntimeError("Init failed: %s" % result.phrase())
 
 
 def unload_engine():
@@ -264,7 +282,7 @@ def find_best_plate_with_split(image: Image, grid_size: int = None, wanted_cells
 
 
 if __name__ == '__main__':
-    engine = threading.Thread(target=load_engine, daemon=True)
+    engine = threading.Thread(target=start_backend_loop, daemon=True)
     engine.start()
 
     app = create_rest_server_flask()
