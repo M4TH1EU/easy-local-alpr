@@ -1,14 +1,19 @@
 import json
+import logging
 import os
 import sys
 import threading
 import time
-from time import sleep
 
 import ultimateAlprSdk
 from PIL import Image
 from flask import Flask, request, jsonify, render_template
 
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+counter_lock = threading.Lock()
 counter = 0
 bundle_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
 boot_time = time.time()
@@ -22,48 +27,46 @@ information. The server is created using Flask and the ultimateALPR SDK is used 
 See the README.md file for more information on how to run this script.
 """
 
-# Defines the default JSON configuration. More information at
-# https://www.doubango.org/SDKs/anpr/docs/Configuration_options.html
-JSON_CONFIG = {
-    "assets_folder": os.path.join(bundle_dir, "assets"),  # don't change this
+# Load configuration from a JSON file or environment variables
+CONFIG_PATH = os.path.join(bundle_dir,
+                           'config.json')  # TODO: store config file outside of bundle (to avoid compilation by users)
+if os.path.exists(CONFIG_PATH):
+    with open(CONFIG_PATH, 'r') as config_file:
+        JSON_CONFIG = json.load(config_file)
+else:
+    JSON_CONFIG = {
+        "assets_folder": os.path.join(bundle_dir, "assets"),
+        "charset": "latin",
+        "car_noplate_detect_enabled": False,
+        "ienv_enabled": False,
+        "openvino_enabled": True,
+        "openvino_device": "CPU",
+        "npu_enabled": False,
+        "klass_lpci_enabled": False,
+        "klass_vcr_enabled": False,
+        "klass_vmmr_enabled": False,
+        "klass_vbsr_enabled": False,
+        "license_token_file": "",
+        "license_token_data": "",
 
-    "charset": "latin",
-    "car_noplate_detect_enabled": False,
-    "ienv_enabled": False,
-    "openvino_enabled": True,
-    "openvino_device": "CPU",
-    "npu_enabled": False,
-    "klass_lpci_enabled": False,
-    "klass_vcr_enabled": False,
-    "klass_vmmr_enabled": False,
-    "klass_vbsr_enabled": False,
-    "license_token_file": "",
-    "license_token_data": "",
-
-    "debug_level": "info",
-    "debug_write_input_image_enabled": False,
-    "debug_internal_data_path": ".",
-
-    "num_threads": -1,
-    "gpgpu_enabled": True,
-    "max_latency": -1,
-
-    "klass_vcr_gamma": 1.5,
-
-    "detect_roi": [0, 0, 0, 0],
-    "detect_minscore": 0.35,
-
-    "car_noplate_detect_min_score": 0.8,
-
-    "pyramidal_search_enabled": False,
-    "pyramidal_search_sensitivity": 0.38,  # default 0.28
-    "pyramidal_search_minscore": 0.8,
-    "pyramidal_search_min_image_size_inpixels": 800,
-
-    "recogn_rectify_enabled": True,  # heavy on cpu
-    "recogn_minscore": 0.4,
-    "recogn_score_type": "min"
-}
+        "debug_level": "fatal",
+        "debug_write_input_image_enabled": False,
+        "debug_internal_data_path": ".",
+        "num_threads": -1,
+        "gpgpu_enabled": True,
+        "max_latency": -1,
+        "klass_vcr_gamma": 1.5,
+        "detect_roi": [0, 0, 0, 0],
+        "detect_minscore": 0.35,
+        "car_noplate_detect_min_score": 0.8,
+        "pyramidal_search_enabled": False,
+        "pyramidal_search_sensitivity": 0.38,
+        "pyramidal_search_minscore": 0.8,
+        "pyramidal_search_min_image_size_inpixels": 800,
+        "recogn_rectify_enabled": True,
+        "recogn_minscore": 0.4,
+        "recogn_score_type": "min"
+    }
 
 IMAGE_TYPES_MAPPING = {
     'RGB': ultimateAlprSdk.ULTALPR_SDK_IMAGE_TYPE_RGB24,
@@ -75,7 +78,7 @@ config = json.dumps(JSON_CONFIG)
 
 
 def start_backend_loop():
-    global counter, boot_time
+    global boot_time, counter
 
     while True:
         load_engine()
@@ -87,13 +90,13 @@ def start_backend_loop():
                 if not is_engine_loaded():
                     unload_engine()  # just in case
                     load_engine()
-
             time.sleep(1)
 
         unload_engine()
 
         # Reset counter and boot_time to restart the loop
-        counter = 0
+        with counter_lock:
+            counter = 0
         boot_time = time.time()
 
 
@@ -116,7 +119,8 @@ def unload_engine():
 
 def process_image(image: Image) -> str:
     global counter
-    counter += 1
+    with counter_lock:
+        counter += 1
 
     width, height = image.size
 
@@ -125,7 +129,6 @@ def process_image(image: Image) -> str:
     else:
         raise ValueError("Invalid mode: %s" % image.mode)
 
-    # TODO: add check for if engine still loaded
     result = ultimateAlprSdk.UltAlprSdkEngine_process(
         image_type,
         image.tobytes(),
@@ -157,28 +160,25 @@ def create_rest_server_flask():
         interference = time.time()
 
         if 'upload' not in request.files:
-            return jsonify({'error': 'No image found'})
-        if 'grid_size' in request.form and request.form['grid_size'].isdigit():
-            grid_size = int(request.form['grid_size'])
+            return jsonify({'error': 'No image found'}), 400
+
+        grid_size = int(request.form.get('grid_size', 3))
+        wanted_cells = request.form.get('wanted_cells')
+        if wanted_cells:
+            wanted_cells = [int(cell) for cell in wanted_cells.split(',')]
         else:
-            grid_size = None
-        if 'wanted_cells' in request.form and request.form['wanted_cells']:
-            wanted_cells = request.form['wanted_cells'].split(',')
-            wanted_cells = [int(cell) for cell in wanted_cells]
-        else:
-            wanted_cells = None
+            wanted_cells = list(range(1, grid_size * grid_size + 1))
 
         image = request.files['upload']
         if image.filename == '':
-            return jsonify({'error': 'No selected file'})
+            return jsonify({'error': 'No selected file'}), 400
 
         image = Image.open(image)
         result = process_image(image)
         result = convert_to_cpai_compatible(result)
 
         if not result['predictions']:
-            print("No plate found in the image, attempting to split the image")
-
+            logger.debug("No plate found in the image, attempting to split the image")
             predictions_found = find_best_plate_with_split(image, grid_size, wanted_cells)
 
             if predictions_found:
@@ -239,9 +239,7 @@ def convert_to_cpai_compatible(result):
     return response
 
 
-def find_best_plate_with_split(image: Image, grid_size: int = None, wanted_cells: str = None):
-    if grid_size is None:
-        grid_size = 3
+def find_best_plate_with_split(image: Image, grid_size: int = 3, wanted_cells: list = None):
     if wanted_cells is None:
         wanted_cells = list(range(1, grid_size * grid_size + 1))
 
