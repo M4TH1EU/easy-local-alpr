@@ -75,21 +75,26 @@ config = json.dumps(JSON_CONFIG)
 
 
 def start_backend_loop():
-    global counter
-    load_engine()
+    global counter, boot_time
 
-    # loop for about an hour or 3000 requests then reload the engine (fix for trial license)
-    while counter < 3000 and time.time() - boot_time < 60 * 60:
-        # every 120 sec
-        if int(time.time()) % 120 == 0:
-            if not is_engine_loaded():
-                unload_engine()  # just in case
-                load_engine()
+    while True:
+        load_engine()
 
-        sleep(1)
+        # loop for about an hour or 3000 requests then reload the engine (fix for trial license)
+        while counter < 3000 and time.time() - boot_time < 60 * 60:
+            # every 120 sec
+            if int(time.time()) % 120 == 0:
+                if not is_engine_loaded():
+                    unload_engine()  # just in case
+                    load_engine()
 
-    unload_engine()
-    start_backend_loop()
+            time.sleep(1)
+
+        unload_engine()
+
+        # Reset counter and boot_time to restart the loop
+        counter = 0
+        boot_time = time.time()
 
 
 def is_engine_loaded():
@@ -282,8 +287,8 @@ def find_best_plate_with_split(image: Image, grid_size: int = None, wanted_cells
 
 
 if __name__ == '__main__':
-    engine = threading.Thread(target=start_backend_loop, daemon=True)
-    engine.start()
+    engine_thread = threading.Thread(target=start_backend_loop, daemon=True)
+    engine_thread.start()
 
     app = create_rest_server_flask()
     app.run(host='0.0.0.0', port=5000)
