@@ -14,6 +14,47 @@
             background-size: 20px 20px;
             font-family: 'Google Sans', sans-serif;
         }
+
+        .grid-cell {
+            border: 2px solid #e5e7eb; /* Tailwind gray-200 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 0.5rem; /* Rounded corners */
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; /* Smooth transition */
+            padding-top: 25%; /* More compact rectangular shape */
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle shadow for modern look */
+        }
+
+        .grid-cell span {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 500; /* Semi-bold text */
+        }
+
+        .grid-cell.selected {
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: white;
+            border-color: #1f2937; /* Match border color with background */
+        }
+
+        .grid-cell:hover {
+            background-color: #9ca3af; /* Tailwind gray-400 for hover effect */
+            color: white;
+            border-color: #9ca3af; /* Match border color with hover effect */
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 8px; /* Adjust gap between cells */
+            margin-top: 1rem;
+        }
     </style>
 </head>
 
@@ -59,8 +100,8 @@
             <div>
                 <label for="wanted_cells_alpr" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wanted
                     Cells:</label>
-                <input type="text" id="wanted_cells_alpr" name="wanted_cells"
-                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-neutral-800 dark:border-neutral-700">
+                <div id="gridContainer_alpr" class="grid-container"></div>
+                <input type="hidden" id="wanted_cells_alpr" name="wanted_cells">
             </div>
             <input id="plate_image_alpr" name="plate_image_alpr" type="hidden" value="true">
         </div>
@@ -87,8 +128,8 @@
             <div>
                 <label for="wanted_cells_alpr_grid_debug"
                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wanted Cells:</label>
-                <input type="text" id="wanted_cells_alpr_grid_debug" name="wanted_cells"
-                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-neutral-800 dark:border-neutral-700">
+                <div id="gridContainer_alpr_grid_debug" class="grid-container"></div>
+                <input type="hidden" id="wanted_cells_alpr_grid_debug" name="wanted_cells">
             </div>
         </div>
 
@@ -138,6 +179,8 @@
                     if (element.tagName === 'IMG') element.src = '';
                 }
             });
+
+        updateGrid(service);
     }
 
     function initializeForm() {
@@ -181,10 +224,48 @@
         }
     }
 
+    function updateGrid(service) {
+        const gridSize = parseInt(document.getElementById('grid_size_' + service).value);
+        const gridContainer = document.getElementById('gridContainer_' + service);
+        gridContainer.innerHTML = '';
+        gridContainer.style.gridTemplateColumns = `repeat(${gridSize}, minmax(0, 1fr))`;
+        const wantedCellsInput = document.getElementById('wanted_cells_' + service);
+        const selectedCells = wantedCellsInput.value ? wantedCellsInput.value.split(',').map(Number) : [];
+
+        for (let i = 0; i < gridSize * gridSize; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('grid-cell');
+
+            const cellSpan = document.createElement('span');
+            cellSpan.textContent = i + 1;
+            cell.appendChild(cellSpan);
+
+            if (selectedCells.includes(i + 1)) cell.classList.add('selected');
+            cell.addEventListener('click', () => {
+                cell.classList.toggle('selected');
+                updateWantedCells(service);
+            });
+            gridContainer.appendChild(cell);
+        }
+    }
+
+    function updateWantedCells(service) {
+        const gridContainer = document.getElementById('gridContainer_' + service);
+        const selectedCells = [];
+        gridContainer.querySelectorAll('.grid-cell.selected').forEach(cell => {
+            selectedCells.push(cell.textContent);
+        });
+        document.getElementById('wanted_cells_' + service).value = selectedCells.join(',');
+    }
+
     $(document).ready(function () {
         initializeForm();
         toggleLogo();
         window.matchMedia("(prefers-color-scheme: dark)").addEventListener('change', toggleLogo);
+
+        $('#grid_size_alpr, #grid_size_alpr_grid_debug').on('input', function () {
+            updateGrid(document.getElementById('service').value);
+        });
 
         $('#serviceForm').on('submit', function (e) {
             e.preventDefault();
