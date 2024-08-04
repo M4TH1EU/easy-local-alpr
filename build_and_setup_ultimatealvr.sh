@@ -155,6 +155,8 @@ mv "$BIN_DIR/dist/"*.whl "$BUILD_DIR"
 mv "$BIN_DIR/libs" "$BUILD_DIR"
 mv "$BIN_DIR/plugins.xml" "$BUILD_DIR/libs"
 
+strip "$BUILD_DIR/libs"/*.so*
+
 # Move the assets to the root directory
 mv "$SDK_DIR/assets" "$BUILD_DIR/assets"
 
