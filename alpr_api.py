@@ -1,12 +1,15 @@
+import base64
+import io
 import json
 import logging
 import os
 import sys
 import threading
 import time
+import traceback
 
 import ultimateAlprSdk
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from flask import Flask, request, jsonify, render_template
 
 # Setup logging
@@ -149,7 +152,6 @@ def create_rest_server_flask():
     @app.route('/v1/image/alpr', methods=['POST'])
     def alpr():
         """
-        This function is called when a POST request is made to the /v1/image/alpr endpoint.
         The function receives an image and processes it using the ultimateALPR SDK.
 
         Parameters:
@@ -159,34 +161,91 @@ def create_rest_server_flask():
         """
         interference = time.time()
 
-        if 'upload' not in request.files:
-            return jsonify({'error': 'No image found'}), 400
+        try:
+            if 'upload' not in request.files:
+                return jsonify({'error': 'No image found'}), 400
 
-        grid_size = int(request.form.get('grid_size', 3))
-        wanted_cells = request.form.get('wanted_cells')
-        if wanted_cells:
-            wanted_cells = [int(cell) for cell in wanted_cells.split(',')]
-        else:
-            wanted_cells = list(range(1, grid_size * grid_size + 1))
+            grid_size = int(request.form.get('grid_size', 3))
+            wanted_cells = request.form.get('wanted_cells')
+            if wanted_cells:
+                wanted_cells = [int(cell) for cell in wanted_cells.split(',')]
+            else:
+                wanted_cells = list(range(1, grid_size * grid_size + 1))
 
-        image = request.files['upload']
-        if image.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
+            image = request.files['upload']
+            if image.filename == '':
+                return jsonify({'error': 'No selected file'}), 400
 
-        image = Image.open(image)
-        result = process_image(image)
-        result = convert_to_cpai_compatible(result)
+            image = Image.open(image)
+            result = process_image(image)
+            result = convert_to_cpai_compatible(result)
 
-        if not result['predictions']:
-            logger.debug("No plate found in the image, attempting to split the image")
-            predictions_found = find_best_plate_with_split(image, grid_size, wanted_cells)
+            if not result['predictions']:
+                logger.debug("No plate found in the image, attempting to split the image")
+                predictions_found = find_best_plate_with_grid_split(image, grid_size, wanted_cells)
 
-            if predictions_found:
-                result['predictions'].append(max(predictions_found, key=lambda x: x['confidence']))
+                if predictions_found:
+                    result['predictions'].append(max(predictions_found, key=lambda x: x['confidence']))
 
-        result['processMs'] = round((time.time() - interference) * 1000, 2)
-        result['inferenceMs'] = result['processMs']
-        return jsonify(result)
+            # Add the isolated plate image to the result
+            if result['predictions']:
+                isolated_plate_image = isolate_plate_in_image(image, result['predictions'][0])
+                result['image'] = f"data:image/png;base64,{image_to_base64(isolated_plate_image, compress=True)}"
+
+            result['processMs'] = round((time.time() - interference) * 1000, 2)
+            result['inferenceMs'] = result['processMs']
+
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error processing image: {e}")
+            logger.error(traceback.format_exc())
+
+            return jsonify({'error': 'Error processing image'}), 500
+
+    @app.route('/v1/image/alpr_grid_debug', methods=['POST'])
+    def alpr_grid_debug():
+        """
+        The function receives an image and returns it with the grid overlayed on it (for debugging purposes).
+
+        Parameters:
+            - upload: The image to be processed
+            - grid_size: The number of cells to split the image into (e.g. 4)
+            - wanted_cells: The cells to process in the grid separated by commas (e.g. 1,2,3,4) (max: grid_size²)
+
+        Returns:
+            - The image with the grid overlayed on it
+        """
+        try:
+
+            if 'upload' not in request.files:
+                return jsonify({'error': 'No image found'}), 400
+
+            grid_size = int(request.form.get('grid_size', 3))
+
+            wanted_cells = request.form.get('wanted_cells')
+            if wanted_cells:
+                wanted_cells = [int(cell) for cell in wanted_cells.split(',')]
+            else:
+                wanted_cells = list(range(1, grid_size * grid_size + 1))
+
+            image = request.files['upload']
+            if image.filename == '':
+                return jsonify({'error': 'No selected file'}), 400
+
+            image = Image.open(image)
+            image = draw_grid_and_cell_numbers_on_image(image, grid_size, wanted_cells)
+
+            image_base64 = image_to_base64(image, compress=True)
+            result = {
+                "image": f"data:image/png;base64,{image_base64}"
+            }
+
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error processing image: {e}")
+            logger.error(traceback.format_exc())
+
+            return jsonify({'error': 'Error processing image'}), 500
 
     @app.route('/')
     def index():
@@ -239,7 +298,41 @@ def convert_to_cpai_compatible(result):
     return response
 
 
-def find_best_plate_with_split(image: Image, grid_size: int = 3, wanted_cells: list = None):
+def draw_grid_and_cell_numbers_on_image(image: Image, grid_size: int = 3, wanted_cells: list = None) -> Image:
+    if grid_size < 1:
+        grid_size = 1
+
+    if wanted_cells is None:
+        wanted_cells = list(range(1, grid_size * grid_size + 1))
+
+    width, height = image.size
+    cell_width = width // grid_size
+    cell_height = height // grid_size
+
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype(os.path.join(bundle_dir, 'assets', 'fonts', 'GlNummernschildEng-XgWd.ttf'),
+                              image.size[0] // 10)
+
+    for cell_index in range(1, grid_size * grid_size + 1):
+        row = (cell_index - 1) // grid_size
+        col = (cell_index - 1) % grid_size
+        left = col * cell_width
+        upper = row * cell_height
+        right = left + cell_width
+        lower = upper + cell_height
+
+        if cell_index in wanted_cells:
+            draw.rectangle([left, upper, right, lower], outline="red", width=4)
+            draw.text((left + 5, upper + 5), str(cell_index), fill="red", font=font)
+
+    return image
+
+
+def find_best_plate_with_grid_split(image: Image, grid_size: int = 3, wanted_cells: list = None):
+    if grid_size < 1:
+        logger.debug("Grid size < 1, skipping split")
+        return []
+
     if wanted_cells is None:
         wanted_cells = list(range(1, grid_size * grid_size + 1))
 
@@ -282,6 +375,36 @@ def find_best_plate_with_split(image: Image, grid_size: int = 3, wanted_cells: l
                     })
 
     return predictions_found
+
+
+def isolate_plate_in_image(image: Image, plate: dict) -> Image:
+    x_min = plate['x_min']
+    x_max = plate['x_max']
+    y_min = plate['y_min']
+    y_max = plate['y_max']
+
+    offset = 10
+
+    image = image.crop((max(0, x_min - offset), max(0, y_min - offset), min(image.size[0], x_max + offset),
+                        min(image.size[1], y_max + offset)))
+    image = image.resize((int(image.size[0] * 3), int(image.size[1] * 3)), resample=Image.Resampling.LANCZOS)
+
+    return image
+
+
+def image_to_base64(img: Image, compress=False):
+    """Convert a Pillow image to a base64-encoded string."""
+
+    buffered = io.BytesIO()
+    if compress:
+        img = img.resize((int(img.size[0] / 2), int(img.size[1] / 2)))
+        img.save(buffered, format="WEBP", quality=35, lossless=False)
+    else:
+        img.save(buffered, format="WEBP")
+
+    print(buffered.__sizeof__())
+
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 
 if __name__ == '__main__':
