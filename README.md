@@ -21,7 +21,7 @@ process images and return the license plate information found in the image while
 > - The last character of the license plate is masked with an asterisk *(e.g. ``ABC1234`` -> ``ABC123*``)*
 
 ## Installation
-Simply download the latest release from the [releases page](/releases) and run the executable.
+Simply download the latest release from the [releases page](./releases) and run the executable.
 
 The following platforms are currently supported:
 - **Linux** (x86_64)
