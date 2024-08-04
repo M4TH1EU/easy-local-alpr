@@ -13,17 +13,19 @@ This script is intended to be used as a faster local alternative to the large an
 
 
 ## Usage
-The server listens on port 5000 and has one endpoint: /v1/image/alpr. The endpoint accepts POST requests with an
-image file in the 'upload' field. The image is processed using the ultimateALPR SDK and the license plate
-information is returned in JSON format. The reponse follows the CodeProject AI ALPR API format. So it can be used
-as a drop-in replacement for the [CodeProject AI ALPR API](https://www.codeproject.com/AI/docs/api/api_reference.html#license-plate-reader).
+The server listens on port 5000 and has a few endpoints (see below), the most important one being ``/v1/image/alpr``.
 
+### /v1/vision/alpr
 > POST: http://localhost:5000/v1/vision/alpr
 
-**Parameters**
-- upload: (File) The image file to process. (see [Pillow.Image.open()](https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.open) for supported formats)
-- grid_size: (Integer, optional) The grid size to use when no match have been found on the whole image (default: 4)
-- wanted_cells: (String, optional) The wanted cells to use when no match have been found on the whole image (default: all cells)
+**Description**  
+This endpoint processes an image and returns the license plate information (if any) found in the image.  
+This endpoint follows the [CodeProject AI ALPR API](https://www.codeproject.com/AI/docs/api/api_reference.html#license-plate-reader) format *(example below)* so it can be used as a **drop-in replacement** for the CodeProject AI software.
+
+**Parameters**  
+- upload: (File) The image file to process. *(see [Pillow.Image.open()](https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.open) for supported formats, almost any image format is supported)*
+- grid_size: (Integer, optional) Size of grid to divide the image into and retry on each cell when no match have been found on the whole image *(default: 4)* **[(more info)](#more-information-about-the-grid-parameter)**
+- wanted_cells: (String, optional) The cells you want to process *(default: all cells)* **[(see here)](#v1visionalpr_grid_debug)**
     - format: ``1,2,3,4,...`` *(comma separated list of integers, max: grid_size^2)*
     - *Example for a grid_size of 3:*
       ```
@@ -43,6 +45,26 @@ as a drop-in replacement for the [CodeProject AI ALPR API](https://www.codeproje
   "processMs": (Integer) // The time (ms) to process the image (includes inference and image manipulation operations).
 }
 ```
+
+### /v1/vision/alpr_grid_debug
+> POST: http://localhost:5000/v1/vision/alpr_grid_debug
+
+**Description**
+This endpoint displays the grid and each cell's number on the image.
+It is intended to be used for debugging purposes to see which cells are being processed.
+
+**Parameters**
+*same as [v1/vision/alpr](#v1visionalpr)*
+
+  **Response**
+```json
+{
+  "image": (Base64) // The image with the grid and cell numbers drawn on it.
+}
+```
+
+## More information about the grid parameter
+*To write*
 
 
 ## Included models in built executable
