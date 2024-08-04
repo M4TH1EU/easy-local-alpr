@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Easy Local ALPR - API</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Include Google Sans font -->
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -16,15 +16,15 @@
         }
     </style>
 </head>
+
 <body class="bg-neutral-100 dark:bg-neutral-900 dark:text-white flex items-center justify-center min-h-screen p-4">
-<!-- Logo -->
 <div class="absolute top-4 left-4 z-50">
     <img alt="Logo" class="h-12 dark:hidden" id="logo" src="{{ url_for('static', filename='logo_black.webp') }}">
     <img alt="Logo" class="h-12 hidden dark:block" id="logoDark"
          src="{{ url_for('static', filename='logo_white.webp') }}">
 </div>
 
-<div class="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow-lg w-full max-w-md mt-16">
+<div class="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow-lg w-full max-w-xl mt-16">
     <h1 class="text-2xl font-bold mb-4 text-center dark:text-gray-200">Select Service</h1>
     <form class="space-y-4" id="serviceForm">
         <div>
@@ -37,7 +37,6 @@
             </select>
         </div>
 
-        <!-- Plate Recognition (ALPR) Fields -->
         <div class="service-fields hidden" id="alprFields">
             <div>
                 <label for="upload_alpr" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Choose an
@@ -46,9 +45,8 @@
                     <input type="file" id="upload_alpr" name="upload" accept="image/*" class="hidden"
                            onchange="updateFileName();">
                     <label for="upload_alpr"
-                           class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-gray-400 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-600">
-                        Select file
-                    </label>
+                           class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-gray-400 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-600">Select
+                        file</label>
                     <span id="fileName_alpr" class="ml-2 text-sm text-gray-600 dark:text-gray-300"></span>
                 </div>
             </div>
@@ -56,47 +54,41 @@
                 <label for="grid_size_alpr" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Grid
                     Size:</label>
                 <input type="number" id="grid_size_alpr" name="grid_size" value="3"
-                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark dark:bg-neutral-800 dark:border-neutral-700">
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-neutral-800 dark:border-neutral-700">
             </div>
             <div>
                 <label for="wanted_cells_alpr" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wanted
                     Cells:</label>
-                <input type="text" id="wanted_cells_alpr" name="wanted_cells" value=""
-                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark dark:bg-neutral-800 dark:border-neutral-700">
+                <input type="text" id="wanted_cells_alpr" name="wanted_cells"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-neutral-800 dark:border-neutral-700">
             </div>
-            <!-- Hidden field to show plate image from the response in webui -->
             <input id="plate_image_alpr" name="plate_image_alpr" type="hidden" value="true">
         </div>
 
-        <! -- Grid Size Helper Fields -->
         <div class="service-fields hidden" id="alpr_grid_debugFields">
             <div>
                 <label for="upload_alpr_grid_debug" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Choose
-                    an
-                    image:</label>
+                    an image:</label>
                 <div class="mt-1 flex items-center">
                     <input type="file" id="upload_alpr_grid_debug" name="upload" accept="image/*" class="hidden"
                            onchange="updateFileName();">
                     <label for="upload_alpr_grid_debug"
-                           class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-gray-400 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-600">
-                        Select file
-                    </label>
+                           class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-gray-400 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-600">Select
+                        file</label>
                     <span id="fileName_alpr_grid_debug" class="ml-2 text-sm text-gray-600 dark:text-gray-300"></span>
                 </div>
             </div>
             <div>
                 <label for="grid_size_alpr_grid_debug"
-                       class="block text-sm font-medium text-gray-700 dark:text-gray-300">Grid
-                    Size:</label>
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300">Grid Size:</label>
                 <input type="number" id="grid_size_alpr_grid_debug" name="grid_size" value="3"
-                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark dark:bg-neutral-800 dark:border-neutral-700">
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-neutral-800 dark:border-neutral-700">
             </div>
             <div>
                 <label for="wanted_cells_alpr_grid_debug"
-                       class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wanted
-                    Cells:</label>
-                <input type="text" id="wanted_cells_alpr_grid_debug" name="wanted_cells" value=""
-                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark dark:bg-neutral-800 dark:border-neutral-700">
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wanted Cells:</label>
+                <input type="text" id="wanted_cells_alpr_grid_debug" name="wanted_cells"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-neutral-800 dark:border-neutral-700">
             </div>
         </div>
 
@@ -107,11 +99,10 @@
         </div>
 
         <button class="w-full py-2 px-4 bg-black text-white font-semibold rounded-md shadow-sm hover:bg-neutral-900 dark:bg-neutral-900 dark:hover:bg-neutral-950"
-                id="submitButton"
-                type="submit">
-            Submit
+                id="submitButton" type="submit">Submit
         </button>
     </form>
+
     <div class="mt-6">
         <h2 class="text-xl font-semibold mb-2 dark:text-gray-200">
             Response
@@ -125,57 +116,42 @@
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
     function updateFormFields() {
-        var service = document.getElementById('service').value;
+        const service = document.getElementById('service').value;
+        localStorage.setItem('selectedService', service);
 
-        localStorage.setItem('selectedService', service); // Save the selected service
-
-        elementsIdToEmpty = ['responseBox', 'timer', 'fileName_' + service, 'previewImage', 'imagePreview', 'upload_' + service];
-        elementsIdToEmpty.forEach(element => {
-            element = document.getElementById(element);
-            console.log(element.tagName);
-
-            switch (element.tagName) {
-                case 'DIV':
-                    element.classList.add('hidden');
-                    break;
-                case 'INPUT':
-                    element.value = '';
-                    break;
-                case 'SPAN': // fallthrough
-                case 'PRE':
-                    element.textContent = '';
-                    break;
-                case 'IMG':
-                    element.src = '';
-                    break;
-            }
-        });
-
-        var allServicesFields = document.getElementById('serviceForm').querySelectorAll('.service-fields');
-        allServicesFields.forEach(field => {
+        document.querySelectorAll('.service-fields').forEach(field => {
             field.classList.add('hidden');
             field.querySelectorAll('input, select').forEach(field => field.disabled = true);
         });
 
-        var selectedServiceFields = document.getElementById(service + 'Fields');
+        const selectedServiceFields = document.getElementById(service + 'Fields');
         selectedServiceFields.classList.remove('hidden');
         selectedServiceFields.querySelectorAll('input, select').forEach(field => field.disabled = false);
+
+        ['responseBox', 'timer', 'fileName_' + service, 'previewImage', 'imagePreview', 'upload_' + service]
+            .forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    if (element.tagName === 'DIV') element.classList.add('hidden');
+                    if (element.tagName === 'INPUT') element.value = '';
+                    if (element.tagName === 'SPAN' || element.tagName === 'PRE') element.textContent = '';
+                    if (element.tagName === 'IMG') element.src = '';
+                }
+            });
     }
 
     function initializeForm() {
-        var savedService = localStorage.getItem('selectedService');
+        const savedService = localStorage.getItem('selectedService');
         if (savedService) {
             document.getElementById('service').value = savedService;
             updateFormFields();
         }
     }
 
-    const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
-
     function toggleLogo() {
         const logo = document.getElementById('logo');
         const logoDark = document.getElementById('logoDark');
-        if (prefersDarkScheme.matches) {
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
             logo.style.display = 'none';
             logoDark.style.display = 'block';
         } else {
@@ -184,42 +160,36 @@
         }
     }
 
-    toggleLogo();
-    prefersDarkScheme.addEventListener('change', toggleLogo);
-
     function updateFileName() {
-        var service = document.getElementById('service').value;
-
-        var input = document.getElementById('upload_' + service);
-        var fileName = document.getElementById('fileName' + '_' + service);
-        var imagePreview = document.getElementById('imagePreview');
-        var previewImage = document.getElementById('previewImage');
-        var imagePreviewLabel = document.getElementById('imagePreviewLabel');
+        const service = document.getElementById('service').value;
+        const input = document.getElementById('upload_' + service);
+        const fileName = document.getElementById('fileName_' + service);
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+        const imagePreviewLabel = document.getElementById('imagePreviewLabel');
 
         fileName.textContent = input.files[0] ? input.files[0].name : '';
         imagePreviewLabel.textContent = 'Preview:';
 
         if (input.files && input.files[0]) {
-            var reader = new FileReader();
-
-            reader.onload = function (e) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
                 previewImage.src = e.target.result;
                 imagePreview.classList.remove('hidden');
             }
-
             reader.readAsDataURL(input.files[0]);
         }
     }
 
-
     $(document).ready(function () {
-        initializeForm(); // Initialize the form on page load
+        initializeForm();
+        toggleLogo();
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener('change', toggleLogo);
 
         $('#serviceForm').on('submit', function (e) {
             e.preventDefault();
-            var service = $('#service').val();
-            var formData = new FormData(this);
-
+            const service = $('#service').val();
+            const formData = new FormData(this);
             var url;
             if (service === 'alpr') {
                 url = '/v1/image/alpr';
@@ -228,12 +198,9 @@
                 url = '/v1/image/alpr_grid_debug';
                 type = 'POST';
             }
+            $('#submitButton').prop('disabled', true).html('<svg class="animate-spin h-5 w-5 text-white mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M12 2a10 10 0 00-8 4.9l1.5 1A8 8 0 0112 4V2z"></path></svg>');
 
-            var $submitButton = $('#submitButton');
-            $submitButton.prop('disabled', true);
-            $submitButton.html('<svg class="animate-spin h-5 w-5 text-white mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M12 2a10 10 0 00-8 4.9l1.5 1A8 8 0 0112 4V2z"></path></svg>');
-
-            var startTime = Date.now();
+            const startTime = Date.now();
 
             $.ajax({
                 url: url,
@@ -242,38 +209,34 @@
                 processData: false,
                 contentType: false,
                 success: function (data) {
-                    var endTime = Date.now();
-                    var elapsedTime = endTime - startTime;
-
+                    const endTime = Date.now();
+                    const elapsedTime = endTime - startTime;
                     $('#responseBox').text(JSON.stringify(data, null, 2));
                     $('#timer').text(`(${elapsedTime} ms)`);
-                    $submitButton.prop('disabled', false);
-                    $submitButton.text('Submit');
+                    $('#submitButton').prop('disabled', false).text('Submit');
 
                     if (data.image) {
                         $('#previewImage').attr('src', data.image);
                         $('#imagePreview').removeClass('hidden');
 
-                        if (service === 'alpr') {
-                            $('#imagePreviewLabel')[0].textContent = 'Identified plate image:';
-                        }
+                        if (service === 'alpr') $('#imagePreviewLabel').text('Identified plate image:');
+
                     } else {
                         updateFileName();
                     }
                 },
-                error: function (xhr, status, error) {
-                    var endTime = Date.now();
-                    var elapsedTime = endTime - startTime;
-
-                    var err = JSON.parse(xhr.responseText);
+                error: function (xhr) {
+                    const endTime = Date.now();
+                    const elapsedTime = endTime - startTime;
+                    const err = JSON.parse(xhr.responseText);
                     $('#responseBox').text(JSON.stringify(err, null, 2));
                     $('#timer').text(`(${elapsedTime} ms)`);
-                    $submitButton.prop('disabled', false);
-                    $submitButton.text('Submit');
+                    $('#submitButton').prop('disabled', false).text('Submit');
                 }
             });
         });
     });
 </script>
 </body>
+
 </html>
