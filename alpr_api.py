@@ -148,7 +148,7 @@ def create_rest_server_flask():
 
         Parameters:
             - upload: The image to be processed
-            - grid_size: The number of cells to split the image into (e.g. 4)
+            - grid_size: The number of cells to split the image into (e.g. 3)
             - wanted_cells: The cells to process in the grid separated by commas (e.g. 1,2,3,4) (max: grid_size²)
         """
         interference = time.time()
@@ -197,7 +197,7 @@ def create_rest_server_flask():
 
         Parameters:
             - upload: The image to be processed
-            - grid_size: The number of cells to split the image into (e.g. 4)
+            - grid_size: The number of cells to split the image into (e.g. 3)
             - wanted_cells: The cells to process in the grid separated by commas (e.g. 1,2,3,4) (max: grid_size²)
 
         Returns:
