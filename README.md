@@ -1,4 +1,4 @@
-![logo](.git-assets/logo_grey.webp)
+![logo](.git-assets/logo.webp)
 ![ALPR](.git-assets/preview-webui.webp)
 
 #  Easy Local ALPR (Automatic License Plate Recognition)
