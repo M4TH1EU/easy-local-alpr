@@ -20,6 +20,12 @@ process images and return the license plate information found in the image while
 > [CodeProject AI](https://www.codeproject.com/AI/docs/index.html) but it has **one important restriction** with it's free version:
 > - The last character of the license plate is masked with an asterisk *(e.g. ``ABC1234`` -> ``ABC123*``)*
 
+## Installation
+Simply download the latest release from the [releases page](/releases) and run the executable.
+
+The following platforms are currently supported:
+- **Linux** (x86_64)
+
 ## Usage
 
 The server listens on port 5000 and has a few endpoints documented below, the most important one being [``/v1/image/alpr``](#v1visionalpr).
