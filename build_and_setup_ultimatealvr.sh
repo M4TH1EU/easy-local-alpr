@@ -1,5 +1,7 @@
 #!/bin/bash
 
+deactivate 2>/dev/null
+
 # Function to create virtual environment, install the wheel, and copy assets and libs
 install_and_setup() {
     echo "Creating virtual environment at the root..."
@@ -55,7 +57,7 @@ prompt_auto_setup() {
     esac
 }
 
-# Directories
+# Variables
 ROOT_DIR=$(pwd)
 BUILD_DIR="$ROOT_DIR/tmp-build-env"
 SDK_ZIP_URL="https://github.com/DoubangoTelecom/ultimateALPR-SDK/archive/8130c76140fe8edc60fe20f875796121a8d22fed.zip"
@@ -69,7 +71,12 @@ cd "$BUILD_DIR" || exit
 
 # Clone SDK
 echo "Downloading SDK..."
-wget "$SDK_ZIP_URL" -O "$SDK_ZIP" >/dev/null 2>&1
+if [ -f "$SDK_ZIP" ]; then
+    echo "SDK zip already exists."
+    rm -R "$SDK_DIR"
+else
+    wget "$SDK_ZIP_URL" -O "$SDK_ZIP" >/dev/null 2>&1
+fi
 if [ $? -ne 0 ]; then
     echo "Failed to download SDK."
     exit 1
@@ -121,26 +128,30 @@ read -r -p "Do you want TensorFlow for CPU or GPU? (cpu/gpu): " tf_choice
 mkdir -p "$BIN_DIR/tensorflow"
 if [ "$tf_choice" == "gpu" ]; then
     echo "Downloading TensorFlow GPU..."
-    wget https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-gpu-linux-x86_64-2.6.0.tar.gz >/dev/null 2>&1
+    wget https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-gpu-linux-x86_64-2.6.0.tar.gz >/dev/null 2>&1 # Use 2.6 for newer GPU support
     if [ $? -ne 0 ]; then
         echo "Failed to download TensorFlow GPU."
         exit 1
     fi
     echo "Extracting TensorFlow GPU..."
     tar -xf libtensorflow-gpu-linux-x86_64-2.6.0.tar.gz -C "$BIN_DIR/tensorflow" >/dev/null 2>&1
+
+    mv "$BIN_DIR/tensorflow/lib/libtensorflow.so.1" "$BIN_DIR/libs/libtensorflow.so.1"
+    mv "$BIN_DIR/tensorflow/lib/libtensorflow_framework.so.2.6.0" "$BIN_DIR/libs/libtensorflow_framework.so.2"
+
 else
     echo "Downloading TensorFlow CPU..."
-    wget https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-2.6.0.tar.gz >/dev/null 2>&1
+    #wget https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-2.6.0.tar.gz >/dev/null 2>&1
+    wget https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-1.14.0.tar.gz >/dev/null 2>&1 # Use 1.14 as it's smaller in size
     if [ $? -ne 0 ]; then
         echo "Failed to download TensorFlow CPU."
         exit 1
     fi
     echo "Extracting TensorFlow CPU..."
-    tar -xf libtensorflow-cpu-linux-x86_64-2.6.0.tar.gz -C "$BIN_DIR/tensorflow" >/dev/null 2>&1
-fi
+    tar -xf libtensorflow-cpu-linux-x86_64-1.14.0.tar.gz -C "$BIN_DIR/tensorflow" >/dev/null 2>&1
 
-mv "$BIN_DIR/tensorflow/lib/libtensorflow.so.1" "$BIN_DIR/libs/libtensorflow.so.1"
-mv "$BIN_DIR/tensorflow/lib/libtensorflow_framework.so.2.6.0" "$BIN_DIR/libs/libtensorflow_framework.so.2"
+    mv "$BIN_DIR/tensorflow/lib/"* "$BIN_DIR/libs/"
+fi
 
 # Build the wheel
 echo "Building the wheel..."
@@ -154,8 +165,6 @@ fi
 mv "$BIN_DIR/dist/"*.whl "$BUILD_DIR"
 mv "$BIN_DIR/libs" "$BUILD_DIR"
 mv "$BIN_DIR/plugins.xml" "$BUILD_DIR/libs"
-
-strip "$BUILD_DIR/libs"/*.so*
 
 # Move the assets to the root directory
 mv "$SDK_DIR/assets" "$BUILD_DIR/assets"
