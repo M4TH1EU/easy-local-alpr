@@ -41,14 +41,14 @@ else:
         "assets_folder": os.path.join(bundle_dir, "assets"),
         "charset": "latin",
         "car_noplate_detect_enabled": False,
-        "ienv_enabled": False,
+        "ienv_enabled": True,  # night vision enhancements
         "openvino_enabled": True,
         "openvino_device": "CPU",
         "npu_enabled": False,
-        "klass_lpci_enabled": False,
-        "klass_vcr_enabled": False,
-        "klass_vmmr_enabled": False,
-        "klass_vbsr_enabled": False,
+        "klass_lpci_enabled": True,  # License Plate Country Identification
+        "klass_vcr_enabled": False,  # Vehicle Color Recognition (paid)
+        "klass_vmmr_enabled": True,  # Vehicle Make and Model Recognition
+        "klass_vbsr_enabled": False,  # Vehicle Body Style Recognition (paid)
         "license_token_file": "",
         "license_token_data": "",
 
@@ -150,40 +150,56 @@ def create_rest_server_flask():
             - upload: The image to be processed
             - grid_size: The number of cells to split the image into (e.g. 3)
             - wanted_cells: The cells to process in the grid separated by commas (e.g. 1,2,3,4) (max: grid_size²)
+            - whole_image_fallback: If set to true, the whole image will be processed if no plates are found in the specified cells. (default: true)
         """
         interference = time.time()
+        whole_image_fallback = request.form.get('whole_image_fallback', 'true').lower() == 'true'
 
         try:
             if 'upload' not in request.files:
                 return jsonify({'error': 'No image found'}), 400
 
-            grid_size = int(request.form.get('grid_size', 3))
-            wanted_cells = request.form.get('wanted_cells')
-            if wanted_cells:
-                wanted_cells = [int(cell) for cell in wanted_cells.split(',')]
-            else:
-                wanted_cells = list(range(1, grid_size * grid_size + 1))
+            grid_size = int(request.form.get('grid_size', 1))
+            wanted_cells = _get_wanted_cells_from_request(request, grid_size)
 
             image_file = request.files['upload']
             if image_file.filename == '':
                 return jsonify({'error': 'No selected file'}), 400
 
-            image = Image.open(image_file)
-            result = process_image(image)
-            result = convert_to_cpai_compatible(result)
+            image = _load_image_from_request(request)
+
+            result = {
+                'predictions': [],
+                'plates': [],
+                'duration': 0
+            }
+
+            if grid_size < 2:
+                logger.debug("Grid size < 2, processing the whole image")
+                response = process_image(image)
+                result.update(_parse_result_from_ultimatealpr(response))
+            else:
+                logger.debug(f"Grid size: {grid_size}, processing specified cells: {wanted_cells}")
+                predictions_found = _find_best_plate_with_grid_split(image, grid_size, wanted_cells)
+                result['predictions'].extend(predictions_found)
 
             if not result['predictions']:
-                logger.debug("No plate found, attempting grid split")
-                predictions_found = find_best_plate_with_grid_split(image, grid_size, wanted_cells)
-                if predictions_found:
-                    result['predictions'].append(max(predictions_found, key=lambda x: x['confidence']))
+                if grid_size >= 2 and whole_image_fallback:
+                    logger.debug("No plates found in the specified cells, trying whole image as last resort")
+                    response = process_image(image)
+                    result.update(_parse_result_from_ultimatealpr(response))
 
-            if result['predictions']:
-                isolated_plate_image = isolate_plate_in_image(image, result['predictions'][0])
-                result['image'] = f"data:image/png;base64,{image_to_base64(isolated_plate_image, compress=True)}"
+            if result['predictions'] and len(result['predictions']) > 0:
+                all_plates = []
+                for plate in result['predictions']:
+                    all_plates.append(plate.get('plate'))
+                    isolated_plate_image = isolate_plate_in_image(image, plate)
+                    plate['image'] = f"data:image/png;base64,{image_to_base64(isolated_plate_image, compress=True)}"
 
-            process_ms = round((time.time() - interference) * 1000, 2)
-            result.update({'processMs': process_ms, 'inferenceMs': process_ms})
+                result['plates'] = all_plates
+
+            duration = round((time.time() - interference) * 1000, 2)
+            result.update({'duration': duration})
             return jsonify(result)
         except Exception as e:
             logger.error(f"Error processing image: {e}")
@@ -208,17 +224,13 @@ def create_rest_server_flask():
                 return jsonify({'error': 'No image found'}), 400
 
             grid_size = int(request.form.get('grid_size', 3))
-            wanted_cells = request.form.get('wanted_cells')
-            if wanted_cells:
-                wanted_cells = [int(cell) for cell in wanted_cells.split(',')]
-            else:
-                wanted_cells = list(range(1, grid_size * grid_size + 1))
+            wanted_cells = _get_wanted_cells_from_request(request, grid_size)
 
             image_file = request.files['upload']
             if image_file.filename == '':
                 return jsonify({'error': 'No selected file'}), 400
 
-            image = Image.open(image_file)
+            image = _load_image_from_request(request)
             image = draw_grid_and_cell_numbers_on_image(image, grid_size, wanted_cells)
 
             image_base64 = image_to_base64(image, compress=True)
@@ -235,23 +247,46 @@ def create_rest_server_flask():
     return app
 
 
-def convert_to_cpai_compatible(result):
+def _get_wanted_cells_from_request(request, grid_size) -> list:
+    """
+    Helper function to extract wanted cells from the request.
+    If no cells are specified, it returns all cells in the grid.
+    """
+    wanted_cells = request.form.get('wanted_cells')
+    if wanted_cells:
+        wanted_cells = [int(cell) for cell in wanted_cells.split(',')]
+    else:
+        wanted_cells = list(range(1, grid_size * grid_size + 1))
+
+    if not all(1 <= cell <= grid_size * grid_size for cell in wanted_cells):
+        raise ValueError("Invalid cell numbers provided.")
+
+    return wanted_cells
+
+
+def _load_image_from_request(request) -> Image:
+    """
+    Helper function to load an image from the request.
+    It expects the image to be in the 'upload' field of the request.
+    """
+    if 'upload' not in request.files:
+        raise ValueError("No image found in request.")
+
+    image_file = request.files['upload']
+    if image_file.filename == '':
+        raise ValueError("No selected file.")
+
+    try:
+        image = Image.open(image_file)
+        return correct_image_orientation(image)
+    except Exception as e:
+        raise ValueError(f"Error loading image: {e}")
+
+
+def _parse_result_from_ultimatealpr(result) -> dict:
     result = json.loads(result)
     response = {
-        'success': "true",
-        'processMs': result['duration'],
-        'inferenceMs': result['duration'],
         'predictions': [],
-        'message': '',
-        'moduleId': 'ALPR',
-        'moduleName': 'License Plate Reader',
-        'code': 200,
-        'command': 'alpr',
-        'requestId': 'null',
-        'inferenceDevice': 'none',
-        'analysisRoundTripMs': 0,
-        'processedBy': 'none',
-        'timestamp': ''
     }
 
     for plate in result.get('plates', []):
@@ -263,7 +298,6 @@ def convert_to_cpai_compatible(result):
 
         response['predictions'].append({
             'confidence': plate['confidences'][0] / 100,
-            'label': f"Plate: {plate['text']}",
             'plate': plate['text'],
             'x_min': x_min,
             'x_max': x_max,
@@ -273,7 +307,66 @@ def convert_to_cpai_compatible(result):
     return response
 
 
+def _find_best_plate_with_grid_split(image: Image, grid_size: int = 3, wanted_cells: list = None,
+                                     stop_at_first_match: bool = False) -> list:
+    """
+    Splits the image into a grid and processes each cell to find the best plate.
+    Returns a list of predictions found in the specified cells.
+    """
+
+    if grid_size < 2:
+        logger.debug("Grid size < 2, skipping split")
+        return []
+
+    predictions_found = []
+    width, height = image.size
+    cell_width = width // grid_size
+    cell_height = height // grid_size
+
+    for cell_index in range(1, grid_size * grid_size + 1):
+        row = (cell_index - 1) // grid_size
+        col = (cell_index - 1) % grid_size
+        left = col * cell_width
+        upper = row * cell_height
+        right = left + cell_width
+        lower = upper + cell_height
+
+        if cell_index in wanted_cells:
+            cell_image = image.crop((left, upper, right, lower))
+            result = process_image(cell_image)
+            logger.info(f"Processed image with result (grid): {result}")
+            result_cell = json.loads(result)
+
+            for plate in result_cell.get('plates', []):
+                warpedBox = plate['warpedBox']
+                x_coords = warpedBox[0::2]
+                y_coords = warpedBox[1::2]
+                x_min = min(x_coords) + left
+                x_max = max(x_coords) + left
+                y_min = min(y_coords) + upper
+                y_max = max(y_coords) + upper
+
+                predictions_found.append({
+                    'confidence': plate['confidences'][0] / 100,
+                    'plate': plate['text'],
+                    'x_min': x_min,
+                    'x_max': x_max,
+                    'y_min': y_min,
+                    'y_max': y_max
+                })
+
+                if stop_at_first_match:
+                    logger.debug(f"Found plate in cell {cell_index}: {plate['text']}")
+                    return predictions_found
+
+    return predictions_found
+
+
 def draw_grid_and_cell_numbers_on_image(image: Image, grid_size: int = 3, wanted_cells: list = None) -> Image:
+    """
+    Draws a grid on the image and numbers the cells.
+    """
+
     if grid_size < 1:
         grid_size = 1
 
@@ -303,57 +396,13 @@ def draw_grid_and_cell_numbers_on_image(image: Image, grid_size: int = 3, wanted
     return image
 
 
-def find_best_plate_with_grid_split(image: Image, grid_size: int = 3, wanted_cells: list = None):
-    if grid_size < 1:
-        logger.debug("Grid size < 1, skipping split")
-        return []
+def isolate_plate_in_image(image: Image, plate: dict, offset=10) -> Image:
+    """
+    Isolates the plate area in the image and returns a cropped and resized image.
+    """
 
-    if wanted_cells is None:
-        wanted_cells = list(range(1, grid_size * grid_size + 1))
-
-    predictions_found = []
-    width, height = image.size
-    cell_width = width // grid_size
-    cell_height = height // grid_size
-
-    for cell_index in range(1, grid_size * grid_size + 1):
-        row = (cell_index - 1) // grid_size
-        col = (cell_index - 1) % grid_size
-        left = col * cell_width
-        upper = row * cell_height
-        right = left + cell_width
-        lower = upper + cell_height
-
-        if cell_index in wanted_cells:
-            cell_image = image.crop((left, upper, right, lower))
-            result_cell = json.loads(process_image(cell_image))
-
-            for plate in result_cell.get('plates', []):
-                warpedBox = plate['warpedBox']
-                x_coords = warpedBox[0::2]
-                y_coords = warpedBox[1::2]
-                x_min = min(x_coords) + left
-                x_max = max(x_coords) + left
-                y_min = min(y_coords) + upper
-                y_max = max(y_coords) + upper
-
-                predictions_found.append({
-                    'confidence': plate['confidences'][0] / 100,
-                    'label': f"Plate: {plate['text']}",
-                    'plate': plate['text'],
-                    'x_min': x_min,
-                    'x_max': x_max,
-                    'y_min': y_min,
-                    'y_max': y_max
-                })
-
-    return predictions_found
-
-
-def isolate_plate_in_image(image: Image, plate: dict) -> Image:
-    x_min, x_max = plate['x_min'], plate['x_max']
-    y_min, y_max = plate['y_min'], plate['y_max']
-    offset = 10
+    x_min, x_max = plate.get('x_min'), plate.get('x_max')
+    y_min, y_max = plate.get('y_min'), plate.get('y_max')
 
     cropped_image = image.crop((max(0, x_min - offset), max(0, y_min - offset), min(image.size[0], x_max + offset),
                                 min(image.size[1], y_max + offset)))
@@ -363,7 +412,7 @@ def isolate_plate_in_image(image: Image, plate: dict) -> Image:
     return resized_image
 
 
-def image_to_base64(img: Image, compress=False):
+def image_to_base64(img: Image, compress=False) -> str:
     """Convert a Pillow image to a base64-encoded string."""
 
     buffered = io.BytesIO()
@@ -374,6 +423,28 @@ def image_to_base64(img: Image, compress=False):
         img.save(buffered, format="WEBP")
 
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+
+from PIL import Image, ExifTags
+
+
+def correct_image_orientation(img):
+    try:
+        exif = img._getexif()
+        if exif is not None:
+            orientation_key = next(
+                (k for k, v in ExifTags.TAGS.items() if v == 'Orientation'), None)
+            if orientation_key is not None:
+                orientation = exif.get(orientation_key)
+                if orientation == 3:
+                    img = img.rotate(180, expand=True)
+                elif orientation == 6:
+                    img = img.rotate(270, expand=True)
+                elif orientation == 8:
+                    img = img.rotate(90, expand=True)
+    except Exception as e:
+        print("EXIF orientation correction failed:", e)
+    return img
 
 
 if __name__ == '__main__':
