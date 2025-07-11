@@ -60,7 +60,7 @@ prompt_auto_setup() {
 # Variables
 ROOT_DIR=$(pwd)
 BUILD_DIR="$ROOT_DIR/tmp-build-env"
-SDK_ZIP_URL="https://github.com/DoubangoTelecom/ultimateALPR-SDK/archive/8130c76140fe8edc60fe20f875796121a8d22fed.zip"
+SDK_ZIP_URL="https://github.com/DoubangoTelecom/ultimateALPR-SDK/archive/febe9921e7dd37e64901d84cad01d51eca6c6a71.zip" # 3.14.1
 SDK_ZIP="$BUILD_DIR/temp-sdk.zip"
 SDK_DIR="$BUILD_DIR/temp-sdk"
 BIN_DIR="$SDK_DIR/binaries/linux/x86_64"
