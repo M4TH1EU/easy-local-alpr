@@ -168,6 +168,8 @@ mv "$BIN_DIR/plugins.xml" "$BUILD_DIR/libs"
 
 # Move the assets to the root directory
 mv "$SDK_DIR/assets" "$BUILD_DIR/assets"
+# Removes unused models (only keeps TensorFlow and OpenVINO basic license plat recognition)
+rm -Rf "$BUILD_DIR/assets/images" "$BUILD_DIR/assets/models.amlogic_npu" "$BUILD_DIR/assets/models.tensorrt" $BUILD_DIR/assets/models/ultimateALPR-SDK_klass* $BUILD_DIR/assets/models/ultimateALPR-SDK_*mobile* $BUILD_DIR/assets/models/*korean* $BUILD_DIR/assets/models/*chinese* $BUILD_DIR/assets/models/ultimateALPR-SDK_recogn1x100* $BUILD_DIR/assets/models/ultimateALPR-SDK_recogn1x200* $BUILD_DIR/assets/models/ultimateALPR-SDK_recogn1x300* $BUILD_DIR/assets/models/ultimateALPR-SDK_recogn1x400* $BUILD_DIR/assets/models.openvino/ultimateALPR-SDK_klass*
 
 # Deactivate and clean up the build virtual environment
 echo "Deactivating and cleaning up virtual environment..."

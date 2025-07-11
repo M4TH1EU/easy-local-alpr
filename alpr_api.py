@@ -45,9 +45,9 @@ else:
         "openvino_enabled": True,
         "openvino_device": "CPU",
         "npu_enabled": False,
-        "klass_lpci_enabled": True,  # License Plate Country Identification
+        "klass_lpci_enabled": False,  # License Plate Country Identification
         "klass_vcr_enabled": False,  # Vehicle Color Recognition (paid)
-        "klass_vmmr_enabled": True,  # Vehicle Make and Model Recognition
+        "klass_vmmr_enabled": False,  # Vehicle Make and Model Recognition
         "klass_vbsr_enabled": False,  # Vehicle Body Style Recognition (paid)
         "license_token_file": "",
         "license_token_data": "",
